@@ -21,6 +21,7 @@ import (
 	"fmt"
 
 	"knative.dev/net-kourier/pkg/config"
+	"knative.dev/net-kourier/pkg/knative"
 
 	kubeclient "k8s.io/client-go/kubernetes"
 
@@ -55,9 +56,20 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, ingress *v1alpha1.Ingres
 	ingress.Status.InitializeConditions()
 	ingress.Status.ObservedGeneration = ingress.Generation
 
+	before := ingress.DeepCopy()
+
 	r.ObserveKind(ctx, ingress)
 
 	// CHECK READINESS ONLY HERE.
+	ready, err := r.statusManager.IsReady(context.TODO(), before)
+	if err != nil {
+		return err
+	}
+
+	if ready {
+		knative.MarkIngressReady(ingress)
+	}
+
 	return nil
 }
 
