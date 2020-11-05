@@ -200,6 +200,11 @@ func NewController(ctx context.Context, cmw configmap.Watcher) *controller.Impl 
 		AddFunc:    viaTracker,
 		DeleteFunc: viaTracker,
 		UpdateFunc: func(old interface{}, new interface{}) {
+			observers := tracker.GetObservers(new)
+			if len(observers) == 0 {
+				return
+			}
+
 			before := readyAddresses(old.(*corev1.Endpoints))
 			after := readyAddresses(new.(*corev1.Endpoints))
 
@@ -209,7 +214,9 @@ func NewController(ctx context.Context, cmw configmap.Watcher) *controller.Impl 
 				return
 			}
 
-			viaTracker(new)
+			for _, observer := range observers {
+				impl.EnqueueKey(observer)
+			}
 		},
 	})
 
